@@ -18,7 +18,7 @@ class ImageLayoutDataset(Dataset):
         if encode:
             self.X = []
             for example in tqdm(data):
-                X= Df.encode(example)
+                X= self.encode(example)
                 self.X.append(X)
 
         else:
