@@ -68,6 +68,9 @@ class Trainer():
                 labels = X["labels"]\
                     .to(device)\
                     .squeeze()
+                
+                if input_ids.shape[0] == 512:
+                    continue
 
                 if self.model_type == "layoutlm":
                     outputs = self.model(
@@ -161,7 +164,7 @@ class Trainer():
                 num_classes=n_classes
             )
 
-            if len(self.history['validation-f1']) > 0 and self.history['validation-f1'][-1] > val_f1:
+            if len(self.history['validation-f1']) > 0 and self.history['validation-f1'][-1] > val_f1 and epoch >= 3:
                 early_stopping = True
 
             self.history['train-f1'].append(train_f1.item())
