@@ -110,8 +110,8 @@ class Trainer():
             with torch.no_grad():
                 for X_validation in validation_dataloader:
                     input_ids = X_validation["input_ids"]\
-                    .to(device)\
-                    .squeeze()
+                        .to(device)\
+                        .squeeze()
                 
                     bbox = X_validation["bbox"]\
                         .to(device)\
@@ -128,12 +128,21 @@ class Trainer():
                         .to(device)\
                         .squeeze()
 
-                    outputs = self.model(
-                        input_ids=input_ids.reshape(1,-1), 
-                        attention_mask=attention_mask.reshape(1,-1), 
-                        token_type_ids=token_type_ids.reshape(1,-1),
-                        labels=labels.reshape(1,-1)
-                    )
+                    if self.model_type == "bert":
+                        outputs = self.model(
+                            input_ids=input_ids.reshape(1,-1), 
+                            attention_mask=attention_mask.reshape(1,-1), 
+                            token_type_ids=token_type_ids.reshape(1,-1),
+                            labels=labels.reshape(1,-1)
+                        )
+                    elif self.model_type == "layoutlm":
+                        outputs = self.model(
+                            input_ids=input_ids.reshape(1,-1), 
+                            bbox= bbox.reshape([1, 512, 4]),
+                            attention_mask=attention_mask.reshape(1,-1), 
+                            token_type_ids=token_type_ids.reshape(1,-1),
+                            labels=labels.reshape(1,-1)
+                        )
 
                     loss = outputs.loss
                     predictions = outputs\
@@ -164,7 +173,9 @@ class Trainer():
                 num_classes=n_classes
             )
 
-            if len(self.history['validation-f1']) > 0 and self.history['validation-f1'][-1] > val_f1 and epoch >= 3:
+            if len(self.history['validation-f1']) > 0 \
+                and self.history['validation-f1'][-1] > val_f1 \
+                and epoch >= 2:
                 early_stopping = True
 
             self.history['train-f1'].append(train_f1.item())
