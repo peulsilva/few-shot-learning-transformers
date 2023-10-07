@@ -3,8 +3,10 @@ from torch.utils.data import DataLoader
 from transformers import AdamW
 from tqdm import tqdm
 import logging
+import numpy as np
 from torcheval.metrics.functional import multiclass_f1_score
 from abc import ABC, abstractmethod
+from copy import deepcopy
 
 class BaseTrainer(ABC):
     def __init__(self,
@@ -12,6 +14,8 @@ class BaseTrainer(ABC):
                  optimizer = AdamW) -> None:
         self.model = model
         self.optimizer = optimizer
+        self.best_model = None
+        self.best_f1 = 0
 
     @abstractmethod
     def compile(
@@ -27,14 +31,37 @@ class BaseTrainer(ABC):
         on validation dataloader.
 
         Args:
-            train_dataloader (DataLoader): _description_
-            validation_dataloader (DataLoader): _description_
-            n_classes (int): _description_
-            device (str, optional): _description_. Defaults to 'cpu'.
-            num_epochs (int, optional): _description_. Defaults to 10.
-            lr (float, optional): _description_. Defaults to 5e-5.
+            train_dataloader (DataLoader): train data
+            validation_dataloader (DataLoader): validation data
+            n_classes (int): number of classes
+            device (str, optional): Device to train ("cuda" or "cpu"). Defaults to 'cpu'.
+            num_epochs (int, optional): Number of epochs. Defaults to 10.
+            lr (float, optional): Learning rate. Defaults to 5e-5.
         """        
         ...
+
+    def save_best_model(
+        self,
+        y_pred : torch.Tensor,
+        y_true : torch.Tensor,
+        n_classes : int,
+    ):
+        """Evaluates model based on f1-score and saves best model
+
+        Args:
+            y_pred (torch.Tensor): validation predictions
+            y_true (torch.Tensor): validation targets
+            n_classes (int): number of classes
+        """        
+        f1 = multiclass_f1_score(
+            y_pred,
+            y_true,
+            num_classes=n_classes
+        )
+
+        if f1 > self.best_f1:
+            self.best_f1 = f1
+            self.best_model = deepcopy(self.model)
 
 class LayoutLMTrainer(BaseTrainer):
     def __init__(self, model, optimizer=AdamW) -> None:
@@ -50,7 +77,6 @@ class LayoutLMTrainer(BaseTrainer):
             ) -> None:
         optimizer = self.optimizer(self.model.parameters(), lr=lr)
         self.model.to(device)
-        early_stopping = False
 
         logging.info('''
             Starting model training
@@ -180,10 +206,11 @@ class LayoutLMTrainer(BaseTrainer):
                 num_classes=n_classes
             )
 
-            if len(self.history['validation-f1']) > 0 \
-                and self.history['validation-f1'][-1] > val_f1 \
-                and epoch >= 2:
-                early_stopping = True
+            self.save_best_model(
+                y_pred_val, 
+                y_true_val, 
+                n_classes
+            )
 
             self.history['train-f1'].append(train_f1.item())
             self.history['validation-f1'].append(val_f1.item())
@@ -199,10 +226,7 @@ class LayoutLMTrainer(BaseTrainer):
                 ''', 
             )
 
-            if early_stopping:
-                print(f"Early stopping on epoch {epoch}")
-                return
-        
+
         
 class BertTrainer(BaseTrainer):
     def __init__(self, model, optimizer=AdamW) -> None:
@@ -218,7 +242,6 @@ class BertTrainer(BaseTrainer):
             ) -> None:
         optimizer = self.optimizer(self.model.parameters(), lr=lr)
         self.model.to(device)
-        early_stopping = False
 
         logging.info('''
             Starting model training
@@ -363,10 +386,11 @@ class BertTrainer(BaseTrainer):
                 num_classes=n_classes
             )
 
-            if len(self.history['validation-f1']) > 0 \
-                and self.history['validation-f1'][-1] > val_f1 \
-                and epoch >= 2:
-                early_stopping = True
+            self.save_best_model(
+                y_pred_val, 
+                y_true_val, 
+                n_classes
+            )
 
             self.history['train-f1'].append(train_f1.item())
             self.history['validation-f1'].append(val_f1.item())
@@ -381,11 +405,6 @@ class BertTrainer(BaseTrainer):
                 Validation f1-score : {val_f1}
                 ''', 
             )
-
-            if early_stopping:
-                print(f"Early stopping on epoch {epoch}")
-                return
-
 
 
 class Trainer():
