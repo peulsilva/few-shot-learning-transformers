@@ -66,6 +66,7 @@ class BaseTrainer(ABC):
 class LayoutLMTrainer(BaseTrainer):
     def __init__(self, model, optimizer=AdamW) -> None:
         super().__init__(model, optimizer)
+        self.model_name = "LayoutLM"
 
     def compile(self, 
                 train_dataloader: DataLoader, 
