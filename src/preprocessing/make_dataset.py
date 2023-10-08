@@ -1,10 +1,8 @@
-from transformers import AutoTokenizer
 from tqdm import tqdm
 from torch.utils.data import Dataset
 from PIL import Image
 from typing import List
 import torch
-from abc import ABC, abstractmethod
 
 
 
