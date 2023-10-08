@@ -231,6 +231,7 @@ class LayoutLMTrainer(BaseTrainer):
 class BertTrainer(BaseTrainer):
     def __init__(self, model, optimizer=AdamW) -> None:
         super().__init__(model, optimizer)
+        self.model_name = "bert"
     
     def compile(self, 
                 train_dataloader: DataLoader, 
@@ -285,22 +286,13 @@ class BertTrainer(BaseTrainer):
                 if input_ids.shape[0] == 512:
                     continue
 
-                if self.model_type == "layoutlm":
-                    outputs = self.model(
-                        input_ids=input_ids, 
-                        bbox=bbox, 
-                        attention_mask=attention_mask, 
-                        token_type_ids=token_type_ids,
-                        labels=labels
-                    )
 
-                elif self.model_type == "bert":
-                    outputs = self.model(
-                        input_ids=input_ids, 
-                        attention_mask=attention_mask, 
-                        token_type_ids=token_type_ids,
-                        labels=labels
-                    )
+                outputs = self.model(
+                    input_ids=input_ids, 
+                    attention_mask=attention_mask, 
+                    token_type_ids=token_type_ids,
+                    labels=labels
+                )
                 
                 loss = outputs.loss
                 predictions = outputs.logits.argmax(-1)
@@ -341,21 +333,12 @@ class BertTrainer(BaseTrainer):
                         .to(device)\
                         .squeeze()
 
-                    if self.model_type == "bert":
-                        outputs = self.model(
-                            input_ids=input_ids.reshape(1,-1), 
-                            attention_mask=attention_mask.reshape(1,-1), 
-                            token_type_ids=token_type_ids.reshape(1,-1),
-                            labels=labels.reshape(1,-1)
-                        )
-                    elif self.model_type == "layoutlm":
-                        outputs = self.model(
-                            input_ids=input_ids.reshape(1,-1), 
-                            bbox= bbox.reshape([1, 512, 4]),
-                            attention_mask=attention_mask.reshape(1,-1), 
-                            token_type_ids=token_type_ids.reshape(1,-1),
-                            labels=labels.reshape(1,-1)
-                        )
+                    outputs = self.model(
+                        input_ids=input_ids.reshape(1,-1), 
+                        attention_mask=attention_mask.reshape(1,-1), 
+                        token_type_ids=token_type_ids.reshape(1,-1),
+                        labels=labels.reshape(1,-1)
+                    )
 
                     loss = outputs.loss
                     predictions = outputs\
