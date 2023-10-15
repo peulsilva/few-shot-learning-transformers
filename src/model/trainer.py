@@ -7,6 +7,7 @@ import numpy as np
 from torcheval.metrics.functional import multiclass_f1_score
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from typing import Union, Dict
 
 class BaseTrainer(ABC):
     def __init__(self,
@@ -227,6 +228,104 @@ class LayoutLMTrainer(BaseTrainer):
                 ''', 
             )
 
+    def evaluate(self,
+                 data : Union[Dict, DataLoader],
+                 device : str = 'cuda'):
+        if isinstance(data, DataLoader):
+            with torch.no_grad():
+
+                y_pred_val = torch.tensor([],device=device)
+                y_true_val = torch.tensor([],device=device)
+                
+                for X_validation in data:
+                    input_ids = X_validation["input_ids"]\
+                        .to(device)\
+                        .squeeze()
+                
+                    bbox = X_validation["bbox"]\
+                        .to(device)\
+                        .squeeze()
+
+                    attention_mask = X_validation["attention_mask"]\
+                        .to(device)\
+                        .squeeze()
+                    token_type_ids = X_validation["token_type_ids"]\
+                        .to(device)\
+                        .squeeze()
+                    
+                    labels = X_validation["labels"]\
+                        .to(device)\
+                        .squeeze()
+
+                    
+                    outputs = self.best_model(
+                        input_ids=input_ids.reshape(1,-1), 
+                        bbox= bbox.reshape([1, 512, 4]),
+                        attention_mask=attention_mask.reshape(1,-1), 
+                        token_type_ids=token_type_ids.reshape(1,-1),
+                        labels=labels.reshape(1,-1)
+                    )
+
+                    loss = outputs.loss
+                    predictions = outputs\
+                        .logits\
+                        .argmax(-1)\
+                        .squeeze()
+
+                    valid_outputs_mask = labels != -100
+
+
+                    y_pred = predictions[valid_outputs_mask].to(device)
+                    y_true = labels[valid_outputs_mask].to(device)
+
+                    y_pred_val = torch.cat([y_pred, y_pred_val])
+                    y_true_val = torch.cat([y_true, y_true_val])
+
+                return y_pred_val, y_true_val
+            
+        elif isinstance(data, dict):
+            with torch.no_grad():
+                input_ids = data["input_ids"]\
+                            .to(device)\
+                            .squeeze()
+                    
+                bbox = data["bbox"]\
+                    .to(device)\
+                    .squeeze()
+
+                attention_mask = data["attention_mask"]\
+                    .to(device)\
+                    .squeeze()
+                
+                token_type_ids = data["token_type_ids"]\
+                    .to(device)\
+                    .squeeze()
+                
+                labels = data["labels"]\
+                    .to(device)\
+                    .squeeze()
+                
+                outputs = self.best_model(
+                    input_ids=input_ids.reshape(1,-1), 
+                    bbox= bbox.reshape([1, 512, 4]),
+                    attention_mask=attention_mask.reshape(1,-1), 
+                    token_type_ids=token_type_ids.reshape(1,-1),
+                    labels=labels.reshape(1,-1)
+                )
+
+                predictions = outputs\
+                        .logits\
+                        .argmax(-1)\
+                        .squeeze()
+
+                valid_outputs_mask = labels != -100
+
+
+                y_pred = predictions[valid_outputs_mask].to(device)
+                y_true = labels[valid_outputs_mask].to(device)
+
+                return y_pred, y_true
+
 
         
 class BertTrainer(BaseTrainer):
@@ -389,4 +488,100 @@ class BertTrainer(BaseTrainer):
                 Validation f1-score : {val_f1}
                 ''', 
             )
+
+    def evaluate(self,
+                 data : Union[Dict, DataLoader],
+                 device : str = 'cuda'):
+        if isinstance(data, DataLoader):
+            with torch.no_grad():
+
+                y_pred_val = torch.tensor([],device=device)
+                y_true_val = torch.tensor([],device=device)
+                
+                for X_validation in data:
+                    input_ids = X_validation["input_ids"]\
+                        .to(device)\
+                        .squeeze()
+                
+                    bbox = X_validation["bbox"]\
+                        .to(device)\
+                        .squeeze()
+
+                    attention_mask = X_validation["attention_mask"]\
+                        .to(device)\
+                        .squeeze()
+                    token_type_ids = X_validation["token_type_ids"]\
+                        .to(device)\
+                        .squeeze()
+                    
+                    labels = X_validation["labels"]\
+                        .to(device)\
+                        .squeeze()
+
+                    
+                    outputs = self.best_model(
+                        input_ids=input_ids.reshape(1,-1), 
+                        attention_mask=attention_mask.reshape(1,-1), 
+                        token_type_ids=token_type_ids.reshape(1,-1),
+                        labels=labels.reshape(1,-1)
+                    )
+
+                    loss = outputs.loss
+                    predictions = outputs\
+                        .logits\
+                        .argmax(-1)\
+                        .squeeze()
+
+                    valid_outputs_mask = labels != -100
+
+
+                    y_pred = predictions[valid_outputs_mask].to(device)
+                    y_true = labels[valid_outputs_mask].to(device)
+
+                    y_pred_val = torch.cat([y_pred, y_pred_val])
+                    y_true_val = torch.cat([y_true, y_true_val])
+                    
+                return y_pred_val, y_true_val
+            
+        elif isinstance(data, dict):
+            with torch.no_grad():
+                input_ids = data["input_ids"]\
+                            .to(device)\
+                            .squeeze()
+                    
+                bbox = data["bbox"]\
+                    .to(device)\
+                    .squeeze()
+
+                attention_mask = data["attention_mask"]\
+                    .to(device)\
+                    .squeeze()
+                
+                token_type_ids = data["token_type_ids"]\
+                    .to(device)\
+                    .squeeze()
+                
+                labels = data["labels"]\
+                    .to(device)\
+                    .squeeze()
+                
+                outputs = self.best_model(
+                    input_ids=input_ids.reshape(1,-1), 
+                    attention_mask=attention_mask.reshape(1,-1), 
+                    token_type_ids=token_type_ids.reshape(1,-1),
+                    labels=labels.reshape(1,-1)
+                )
+
+                predictions = outputs\
+                        .logits\
+                        .argmax(-1)\
+                        .squeeze()
+
+                valid_outputs_mask = labels != -100
+
+
+                y_pred = predictions[valid_outputs_mask].to(device)
+                y_true = labels[valid_outputs_mask].to(device)
+
+                return y_pred, y_true
 
