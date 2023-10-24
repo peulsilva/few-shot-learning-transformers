@@ -1,10 +1,9 @@
 from tqdm import tqdm
 from torch.utils.data import Dataset
 from PIL import Image
-from typing import List
+from typing import List, Dict
 import torch
-
-
+from copy import copy
 
 
 class ImageLayoutDataset(Dataset):
@@ -124,3 +123,201 @@ class ImageLayoutDataset(Dataset):
     def __len__(self):
         return len(self.X)
     
+
+class PatternExploitingDataset(Dataset):
+    def __init__(self, 
+                 data,
+                 tokenizer,
+                 pattern_fn : callable,
+                 num_samples : int = 10) -> None:
+        super().__init__()
+        
+        self.label_names = data\
+            .features['ner_tags']\
+            .feature\
+            .names
+        
+        self.label_keymap = {k:v for k,v in enumerate(self.label_names)} 
+
+        self.pattern = pattern_fn
+        self.tokenizer = tokenizer
+
+        self.num_samples = num_samples
+        self._ignore(data[0:num_samples])
+
+        # self.boxes = self.tokenize_boxes(self.words, self.boxes)
+
+
+    
+    def _ignore(
+        self, 
+        data,
+        should_ignore = [";", ":", ".", " ", ""]
+    ):
+        self.boxes = []
+        self.words = []
+        self.labels = []
+        for i in range(self.num_samples):
+            words = data['words'][i]
+            labels = data['ner_tags'][i]
+            boxes = data['bboxes'][i]
+
+            this_words = []
+            this_labels = []
+            this_boxes = []
+
+            for j in range(len(words)):
+
+                if not words[j] in should_ignore:
+                    this_words.append(words[j])
+                    this_labels.append(labels[j])
+                    this_boxes.append(boxes[j])
+
+            self.words.append(this_words)
+            self.labels.append(this_labels)
+            self.boxes.append(this_boxes)
+    
+    def __getitem__(self, document_index : int):
+        phrases = []
+        targets = []
+        boxes = []
+
+        words = self.words[document_index]
+        labels = self.labels[document_index]
+
+        for idx, word in enumerate(words):
+            label_idx = labels[idx]
+            label_name = self.label_keymap[label_idx]
+
+            phrase = self.pattern(word, self.tokenizer)
+            phrases.append(phrase)
+
+            if label_name == "O":
+                targets.append("NOTHING") 
+            else :
+                targets.append(label_name[2:])
+
+        return phrases, targets, 
+    
+    def __len__(self):
+        return len(self.words)
+                
+
+class SplitWordsDataset(Dataset):
+    def __init__(
+        self,
+        data,
+        tokenizer,
+        pattern_fn : callable,
+        separators = [".", ":", "?"],
+    ) -> None:
+        super().__init__()
+
+        self.tokenizer= tokenizer
+        self.separators = separators
+
+        self.pattern_fn = pattern_fn
+
+        self.label_names = data\
+            .features['ner_tags']\
+            .feature\
+            .names
+
+        self.label_keymap = {k:v for k,v in enumerate(self.label_names)} 
+
+        self.raw_data = data
+
+        self.process(data)
+
+    def process(self, data):
+        self.processed_data = []
+
+        for idx in tqdm(range(len(data))):
+            example = data[idx]
+            words = example['words']
+
+            full_text = ' '.join(words)
+            new_full_text = copy(full_text)
+
+            for sep in self.separators:
+                new_full_text = new_full_text.replace(sep, ".")
+
+            split = SplitWordsDataset.split_string(
+                new_full_text, 
+                split_char=".", 
+                min_words=3    
+            )
+            
+            patterns = self.create_pattern(
+                split,
+                example['ner_tags'],
+                words,
+            )
+
+            self.processed_data.append(patterns)
+
+    @staticmethod
+    def split_string(
+        input_string: str, 
+        split_char: str, 
+        min_words: int = 3,
+    ):
+        words = input_string.split(split_char)
+        result = []
+        current_split = []
+
+        for word in words:
+            # Check if adding the current word would exceed the minimum word count
+            if len(current_split) + 1 <= min_words:
+                current_split.append(word)
+            else:
+                # If adding the word exceeds the minimum count, start a new split
+                result.append(split_char.join(current_split))
+                current_split = [word]
+
+        # Add the remaining words to the result
+        if current_split:
+            result.append(split_char.join(current_split))
+
+        return result
+    
+    def create_pattern(
+        self,
+        split: List,
+        targets : List,
+        words,
+    ):
+        pattern_list = []
+        idx = 0
+        for phrase in split:
+            for word in phrase.split(" "):
+
+                if len(word) < 2:
+                    continue
+                
+                while word.split('.')[0] not in words[idx] :
+                    idx += 1
+                    
+                label = targets[idx]
+                real_name_label = self.label_keymap[label]
+        
+                if real_name_label == "O":
+                    real_name_label= "NONE" 
+                else :
+                    real_name_label = real_name_label[2:]
+
+                pattern = self.pattern_fn(phrase, word, self.tokenizer)
+                pattern_list.append({"pattern": pattern,
+                                    "label": real_name_label})
+        
+        return pattern_list
+    
+    def __len__(self):
+        return len(self.processed_data)
+    
+    def __getitem__(self, index) :
+        return self.processed_data[index]
+        
+                
+    
+
