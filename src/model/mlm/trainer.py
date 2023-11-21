@@ -1,6 +1,6 @@
 import torch
 import logging
-import tqdm
+from tqdm import tqdm
 from torch.utils.data import Dataset
 from src.preprocessing.make_dataset import SplitWordsDataset
 from typing import Dict
@@ -14,7 +14,7 @@ class MLMTrainer:
     def __init__(self,
                  model,
                  tokenizer,
-                 labels_idx_keymap : Dict, 
+                 verbalizer : Dict, 
                  optimizer = AdamW,
                  alpha : float = 1e-4,
                  device : str = "cuda",) -> None:
@@ -23,16 +23,25 @@ class MLMTrainer:
         self.tokenizer = tokenizer
         self.model = model
         self.alpha = alpha
-        self.optimizer = optimizer
-        self.labels_idx_keymap = labels_idx_keymap
+        self.optimizer = optimizer(self.model.parameters(), lr=1e-5)
+        self.labels_idx_keymap = verbalizer
+        self.best_model = None
         
     def compile(self,
                 train_data : SplitWordsDataset,
                 n_shots : int,
-                n_epochs : int = 10):
+                n_epochs : int = 10,
+                n_validation : int = 10
+            ):
         
         self.history_train = []
         self.history_val = []
+        best_f1 = 0
+
+        if self.best_model is None:
+            self.best_model = deepcopy(self.model)
+
+        logging.info(f"Starting model training with {n_shots} shots")
 
         for epoch in range(n_epochs):
             self.y_true_train = torch.tensor([],device=self.device)
@@ -78,7 +87,7 @@ class MLMTrainer:
                     question_logits = mask_token_logits[0, self.tokenizer.vocab["question"]].item()
                     answer_logits = mask_token_logits[0, self.tokenizer.vocab["answer"]].item()
                     header_logits = mask_token_logits[0, self.tokenizer.vocab["header"]].item()
-                    none_logits = mask_token_logits[0, self.tokenizer.vocab["nothing"]].item()
+                    none_logits = mask_token_logits[0, self.tokenizer.vocab["none"]].item()
 
                     logits_list = torch.tensor([
                         none_logits,
@@ -119,15 +128,15 @@ class MLMTrainer:
 
                     loss.backward()
 
-                    self.optmizer.step()
-                    self.optmizer.zero_grad()
+                    self.optimizer.step()
+                    self.optimizer.zero_grad()
 
             f1 = multiclass_f1_score(
                 self.y_pred_train,
                 self.y_true_train,
                 num_classes=4
             )
-            self.history.append(f1)
+            self.history_train.append(f1)
 
             logging.info(f'''
                         
@@ -144,8 +153,11 @@ class MLMTrainer:
                 )}
             ''')
 
-            y_true_val, y_pred_val = self.evaluate(num_shots=5,
-                                                   model = self.model)
+            y_true_val, y_pred_val = self.evaluate(
+                train_data[n_shots + 1 :],
+                n_shots=n_validation,
+                model = self.model
+            )
 
             f1_val = multiclass_f1_score(
                 y_pred_val,
@@ -167,7 +179,6 @@ class MLMTrainer:
                 best_f1 = f1_val
             
 
-
             logging.info(f'''
                 {multiclass_confusion_matrix(
                     y_pred_val.to(torch.int64),
@@ -180,18 +191,21 @@ class MLMTrainer:
         self,
         validation_dataset : SplitWordsDataset,
         model = None,
-        num_shots : int = 30
+        n_shots : int = 50,
+        return_generated_dataset : bool = False
     ):
         if model is None:
             model = self.best_model
         self.y_true_val = torch.tensor([],device=self.device)
         self.y_pred_val = torch.tensor([],device=self.device)
+        generated_labels = []
 
 
         with torch.no_grad():
-            for i in tqdm(range(num_shots)):
-
+            for i in tqdm(range(n_shots)):
+                generated_labels_i=[]
                 for processed_data in (validation_dataset[i]):
+
 
                     phrase = processed_data['pattern']
                     label = processed_data["label"]
@@ -244,6 +258,7 @@ class MLMTrainer:
                         key = lambda x: x[1]
                     )[0][0]
 
+                    generated_labels_i.append(predicted_value.upper())
                     predicted_value = self.labels_idx_keymap[predicted_value]
 
                     # logging.info(predicted_value)
@@ -260,5 +275,9 @@ class MLMTrainer:
                         self.y_true_val,
                         torch.tensor([real_value]).to(self.device)
                     ])
+                generated_labels.append(generated_labels_i)
 
+        if return_generated_dataset:
+            return generated_labels, self.y_true_val, self.y_pred_val
+        
         return self.y_true_val, self.y_pred_val
