@@ -154,7 +154,7 @@ class MLMTrainer:
             ''')
 
             y_true_val, y_pred_val = self.evaluate(
-                train_data[n_shots + 1 :],
+                train_data[100:],
                 n_shots=n_validation,
                 model = self.model
             )
