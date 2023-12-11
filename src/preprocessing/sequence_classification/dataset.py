@@ -25,6 +25,31 @@ class TextDataset(Dataset):
             "labels": self.labels[index]
         }
     
+    
+def get_n_shots_per_class(
+    text : List[str],
+    labels : List[str],
+    n_shots : int,
+    num_classes : int
+):
+    data_per_label = {}
+
+    for i in range(num_classes):
+        data_per_label[i] = []
+
+    for i in range(len(text)):
+        data_per_label[labels[i]].append(text[i])
+
+    text = []
+    labels = []
+    num_classes = len(data_per_label.keys())
+    
+    for label in range(num_classes):
+        for j in range(n_shots):
+            text.append(data_per_label[label][j])
+            labels.append(label)
+    
+    return text, labels
 
 def get_dataloader(
     text : List[str],
@@ -44,23 +69,13 @@ def get_dataloader(
     Returns:
         _type_: _description_
     """    
-    data_per_label = {}
+    text, labels = get_n_shots_per_class(
+        text,
+        labels, 
+        n_shots, 
+        num_classes
+    )
 
-    for i in range(num_classes):
-        data_per_label[i] = []
-
-    for i in range(len(text)):
-        data_per_label[labels[i]].append(text[i])
-
-    text = []
-    labels = []
-    num_classes = len(data_per_label.keys())
-    
-    for label in range(num_classes):
-        for j in range(n_shots):
-            text.append(data_per_label[label][j])
-            labels.append(label)
-            
     tokens = tokenizer(
         text,
         truncation= True,
