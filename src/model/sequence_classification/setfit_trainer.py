@@ -16,22 +16,23 @@ class SetFitTrainer():
         num_classes : int,
         device : str ='cuda' ,
     ) -> None:
-        self.embedding_model = embedding_model
+        self.embedding_model = embedding_model.to(device)
         self.device = device
         self.dataset_name = dataset_name
-        self.classifier_model = classifier_model
+        self.classifier_model = classifier_model.to(device)
         self.num_classes = num_classes
 
     def train_embedding(
             self,
             train_dataloader : DataLoader,
             val_dataloader : DataLoader,
-            n_shots : int
+            n_shots : int,
+            n_epochs : int = 10,
+            **kwargs
         ):
         loss_fn = losses.CosineSimilarityLoss(self.embedding_model)
         cos_sim = torch.nn.CosineSimilarity(dim = 1)
 
-        n_epochs = 10
         best_f1 = 0
         self.best_model = None
 
@@ -39,7 +40,7 @@ class SetFitTrainer():
             self.embedding_model.fit(
                 train_objectives=[ (train_dataloader, loss_fn)],
                 epochs = 1,
-                show_progress_bar=False
+                **kwargs
             )
 
             y_true_val = torch.tensor([],device=self.device)
@@ -80,7 +81,6 @@ class SetFitTrainer():
                 y_true_val.to(torch.int64),
                 num_classes=2
             )
-
             print(f'f1 score: {f1.item()}')
             print(conf_matrix)
 
@@ -91,8 +91,13 @@ class SetFitTrainer():
         X_train : List[str],
         y_train : List[int],
         X_val : List[str],
-        y_val : List[str]
+        y_val : List[int],
+        n_epochs : int =100,
+        embedding_model = None
     ):
+        if embedding_model is None:
+            self.embedding_model = self.best_model\
+                .to(self.device)
 
         loss_fn = torch.nn.CrossEntropyLoss()
 
@@ -103,9 +108,8 @@ class SetFitTrainer():
 
         self.best_clf = None
         best_f1 = 0
-        n_epochs = 100
 
-        history = []
+        self.history = []
 
         for epoch in (range(n_epochs)):
             for i in tqdm(range(len(X_train))):
@@ -116,7 +120,8 @@ class SetFitTrainer():
                 with torch.no_grad():
                     embedding = self.\
                         embedding_model\
-                        .encode(text, convert_to_tensor=True)
+                        .encode(text, convert_to_tensor=True)\
+                        .to(self.device)
 
                 optimizer.zero_grad()
                 output = self.classifier_model(embedding)
@@ -158,7 +163,7 @@ class SetFitTrainer():
                 num_classes=self.num_classes
             )
             
-            history.append(f1.item())
+            self.history.append(f1.item())
             if f1 > best_f1:
                 best_f1 = f1
                 self.best_clf = deepcopy(self.classifier_model)
@@ -173,3 +178,5 @@ class SetFitTrainer():
             print(f"---------Epoch: {epoch}-----------")
             print(f'f1 score: {f1.item()}')
             print(conf_matrix)
+
+        return self.history

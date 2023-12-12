@@ -57,6 +57,7 @@ def get_dataloader(
     tokenizer : AutoTokenizer,
     n_shots : int,
     num_classes : int,
+    equalize_class : bool = True,
     **kwargs
 ):
     """Returns the dataloader with the correct number of shots per label
@@ -69,12 +70,17 @@ def get_dataloader(
     Returns:
         _type_: _description_
     """    
-    text, labels = get_n_shots_per_class(
-        text,
-        labels, 
-        n_shots, 
-        num_classes
-    )
+    if equalize_class:
+        text, labels = get_n_shots_per_class(
+            text,
+            labels, 
+            n_shots, 
+            num_classes
+        )
+
+    else:
+        text = text[0:n_shots*num_classes]
+        labels = labels[0:n_shots*num_classes]
 
     tokens = tokenizer(
         text,
