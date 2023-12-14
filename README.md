@@ -25,10 +25,13 @@ pip install -r requirements.txt
 
 | number of shots | Dataset | Technique | Performance (F1 Score) | 
 | - | - | - | - | 
+| 2 | FUNSD | BioTechnique | 0.53 |
 | 2 | FUNSD | PET (DistilBERT) | 0.43 |
 | 2 | FUNSD | Finetuning (LayoutLM) | 0.3 |
+| 5 | FUNSD | BioTechnique (BERT) | 0.53 |
 | 5 | FUNSD | PET (DistilBERT) | 0.48 |
 | 5 | FUNSD | Finetuning (LayoutLM) | 0.41 |
 | 10 | FUNSD | Finetuning (LayoutLM) | 0.69 |
+| 10 | FUNSD | BioTechnique (BERT) | 0.61 |
 | 10 | FUNSD | PET (DistilBERT) | 0.53 |
 
