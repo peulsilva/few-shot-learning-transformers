@@ -70,10 +70,10 @@ class BaseTrainer(ABC):
         optimizer = self.optimizer(self.model.parameters(), lr=lr)
         self.model.to(device)
 
-        logging.info('''
-            Starting model training
-            -----------------------       
-        ''')
+        # logging.info('''
+        #     Starting model training
+        #     -----------------------       
+        # ''')
         self.model.train()
         self.history = {
             "train_accuracy": [],
@@ -82,14 +82,14 @@ class BaseTrainer(ABC):
             "validation-f1": []
         }
 
-        for epoch in tqdm(range(num_epochs)):
-            logging.info(f"Epoch: {epoch}")
+        for epoch in (range(num_epochs)):
+            # logging.info(f"Epoch: {epoch}")
             
             y_true_train = torch.tensor([],device=device)
             y_pred_train = torch.tensor([],device=device)
             y_pred_val = torch.tensor([],device=device)
             y_true_val = torch.tensor([],device=device)
-            for X in (train_dataloader):
+            for X in tqdm(train_dataloader):
                 input_ids = X["input_ids"]\
                     .to(device)\
                     .squeeze()
@@ -109,6 +109,7 @@ class BaseTrainer(ABC):
                     .to(device)\
                     .squeeze()
                 
+                print(input_ids.shape)
                 if input_ids.shape[0] == 512:
                     continue
 
@@ -140,6 +141,8 @@ class BaseTrainer(ABC):
                 optimizer.step()
                 optimizer.zero_grad()
 
+            if validation_dataloader is None:
+                continue
             with torch.no_grad():
                 for X_validation in validation_dataloader:
                     input_ids = X_validation["input_ids"]\

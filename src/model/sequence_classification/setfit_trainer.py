@@ -13,6 +13,7 @@ class SetFitTrainer():
         embedding_model ,
         classifier_model : torch.nn.Module,
         dataset_name : str,
+        model_name : str,
         num_classes : int,
         device : str ='cuda' ,
     ) -> None:
@@ -21,6 +22,7 @@ class SetFitTrainer():
         self.dataset_name = dataset_name
         self.classifier_model = classifier_model.to(device)
         self.num_classes = num_classes
+        self.model_name= model_name
 
     def train_embedding(
             self,
@@ -84,7 +86,7 @@ class SetFitTrainer():
             print(f'f1 score: {f1.item()}')
             print(conf_matrix)
 
-        self.embedding_model.save_to_hub(f"peulsilva/phrase-bert-setfit-{n_shots}shots-{self.dataset_name}")
+        self.embedding_model.save_to_hub(f"peulsilva/{self.model_name}-setfit-{n_shots}shots-{self.dataset_name}")
 
     def train_classifier(
         self,
