@@ -25,11 +25,12 @@ def train(
     val_dataloader : DataLoader,
     num_classes: int,
     model : AutoModelForMaskedLM,
-    alpha : float,
     verbalizer : Dict,
     tokenizer : AutoTokenizer,
+    alpha : float,
     device : str = 'cuda',
-    lr : float = 1e-5
+    lr : float = 1e-5,
+    n_epochs : int =10,
 ):
     inverse_verbalizer = {v:k for k, v in verbalizer.items()}
 
@@ -37,9 +38,6 @@ def train(
         model.parameters(),
         lr = lr
     )
-
-
-    n_epochs = 10
 
     best_f1=  0
     confusion_matrix= None
@@ -87,7 +85,10 @@ def train(
             for input in tqdm(val_dataloader):
                 out = model(**input)
 
-                y_true = get_y_true(input)
+                y_true = get_y_true(
+                    input,
+                    inverse_verbalizer
+                )
 
                 mask_token_index = torch.where(input["input_ids"] == tokenizer.mask_token_id)[1]
                 mask_token_logits = out.logits[0, mask_token_index, :]
