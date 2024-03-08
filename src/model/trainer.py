@@ -109,7 +109,6 @@ class BaseTrainer(ABC):
                     .to(device)\
                     .squeeze()
                 
-                print(input_ids.shape)
                 if input_ids.shape[0] == 512:
                     continue
 

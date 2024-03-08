@@ -28,9 +28,9 @@ class TextDataset(Dataset):
     
 def get_n_shots_per_class(
     text : List[str],
-    labels : List[str],
+    labels : List[int],
     n_shots : int,
-    num_classes : int
+    num_classes : int,
 ):
     data_per_label = {}
 
@@ -75,7 +75,7 @@ def get_dataloader(
             text,
             labels, 
             n_shots, 
-            num_classes
+            num_classes,
         )
 
     else:

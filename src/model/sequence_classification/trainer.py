@@ -28,7 +28,9 @@ class SequenceClassificationTrainer:
         train_dataloader : DataLoader,
         val_dataloader : DataLoader,
         n_epochs : int = 10,
-        lr : float = 1e-5
+        lr : float = 1e-5,
+        loss_fn : torch.nn.Module = None,
+        evaluation_fn : callable = multiclass_f1_score, 
     ):
         optimizer = torch.optim.AdamW(
             self.model.parameters(),
@@ -54,7 +56,15 @@ class SequenceClassificationTrainer:
                 optimizer.zero_grad()
 
                 output = self.model(**batch)
-                loss = output['loss']
+
+                if loss_fn is None:
+                    loss = output['loss']
+
+                else:
+                    loss = loss_fn(
+                        output['logits'],
+                        batch['labels']
+                    )
 
                 loss.backward()
                 optimizer.step()
@@ -84,11 +94,19 @@ class SequenceClassificationTrainer:
                         torch.tensor(y_true).to(self.device)
                     ])
 
-            f1 = multiclass_f1_score(
-                y_pred_val.argmax(dim = 1).to(torch.int64),
-                y_true_val.to(torch.int64),
-                num_classes= self.num_classes
-            )
+            if evaluation_fn == multiclass_f1_score:
+
+                f1 = evaluation_fn(
+                    y_pred_val.argmax(dim = 1).to(torch.int64),
+                    y_true_val.to(torch.int64),
+                    num_classes= self.num_classes
+                )
+
+            else:
+                f1 = evaluation_fn(
+                    y_pred_val.argmax(dim = 1).to(torch.int64),
+                    y_true_val.to(torch.int64),
+                )
 
             conf_matrix = multiclass_confusion_matrix(
                 y_pred_val.argmax(dim = 1).to(torch.int64), 
