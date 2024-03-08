@@ -6,7 +6,7 @@ from src.preprocessing.make_dataset import SplitWordsDataset
 from typing import Dict
 from torch.nn.functional import cross_entropy
 from transformers import AdamW
-from torcheval.metrics.functional import multiclass_f1_score, multiclass_confusion_matrix
+from torcheval.metrics.functional import multiclass_f1_score, multiclass_confusion_matrix, binary_f1_score
 from copy import deepcopy
 from transformers import AutoModelForSequenceClassification
 
@@ -95,7 +95,7 @@ class SequenceClassificationTrainer:
                     ])
 
             if evaluation_fn == multiclass_f1_score:
-
+                
                 f1 = evaluation_fn(
                     y_pred_val.argmax(dim = 1).to(torch.int64),
                     y_true_val.to(torch.int64),
@@ -107,6 +107,12 @@ class SequenceClassificationTrainer:
                     y_pred_val.argmax(dim = 1).to(torch.int64),
                     y_true_val.to(torch.int64),
                 )
+
+                print(binary_f1_score(
+                    y_pred_val.argmax(dim = 1).to(torch.int64),
+                    y_true_val.to(torch.int64),
+                ))
+                print(f1)
 
             conf_matrix = multiclass_confusion_matrix(
                 y_pred_val.argmax(dim = 1).to(torch.int64), 
@@ -123,6 +129,8 @@ class SequenceClassificationTrainer:
                 best_f1 = f1
                 self.best_model = deepcopy(self.model)
                 self.history['val_conf_matrix'] = conf_matrix
+                self.history['y_pred'] = y_pred_val.argmax(dim = 1).to(torch.int64)
+                self.history['y_true'] = y_true_val.to(torch.int64)
         
         return self.history
 
