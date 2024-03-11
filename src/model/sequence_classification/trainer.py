@@ -112,7 +112,6 @@ class SequenceClassificationTrainer:
                     y_pred_val.argmax(dim = 1).to(torch.int64),
                     y_true_val.to(torch.int64),
                 ))
-                print(f1)
 
             conf_matrix = multiclass_confusion_matrix(
                 y_pred_val.argmax(dim = 1).to(torch.int64), 
