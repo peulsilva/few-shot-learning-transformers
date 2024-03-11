@@ -9,6 +9,7 @@ from transformers import AdamW
 from torcheval.metrics.functional import multiclass_f1_score, multiclass_confusion_matrix, binary_f1_score
 from copy import deepcopy
 from transformers import AutoModelForSequenceClassification
+from IPython.display import clear_output
 
 class SequenceClassificationTrainer:
     def __init__(
@@ -108,16 +109,16 @@ class SequenceClassificationTrainer:
                     y_true_val.to(torch.int64),
                 )
 
-                print(binary_f1_score(
-                    y_pred_val.argmax(dim = 1).to(torch.int64),
-                    y_true_val.to(torch.int64),
-                ))
-
             conf_matrix = multiclass_confusion_matrix(
                 y_pred_val.argmax(dim = 1).to(torch.int64), 
                 y_true_val.to(torch.int64),
                 num_classes=self.num_classes
             )
+
+
+            clear_output()
+            print(f"f1: {f1.item()}")
+            print(conf_matrix)
 
             logging.info(f"f1: {f1}")
             logging.info(conf_matrix)
