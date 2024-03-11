@@ -4,8 +4,10 @@ from transformers import AutoModelForMaskedLM, AutoTokenizer
 from typing import Dict
 from tqdm import tqdm
 import logging
-from torcheval.metrics.functional import multiclass_f1_score, multiclass_confusion_matrix
+from torcheval.metrics.functional import multiclass_f1_score, multiclass_confusion_matrix, binary_f1_score
 from torch.nn.functional import cross_entropy
+from copy import deepcopy
+from IPython.display import clear_output
 
 
 def get_y_true(
@@ -28,6 +30,8 @@ def train(
     verbalizer : Dict,
     tokenizer : AutoTokenizer,
     alpha : float,
+    evaluation_fn : callable = multiclass_f1_score,
+    loss_fn : torch.nn.Module = None,
     device : str = 'cuda',
     lr : float = 1e-5,
     n_epochs : int =10,
@@ -40,6 +44,7 @@ def train(
     )
 
     best_f1=  0
+    best_model = None
     confusion_matrix= None
 
     history = []
@@ -64,11 +69,17 @@ def train(
             )
 
             probabilities = predictions.softmax(dim = 0).to(device)
-
+                
             loss_ce = cross_entropy(
                 probabilities,
                 y_true
             )
+
+            if loss_fn is not None:
+                loss_ce = loss_fn(
+                    probabilities, 
+                    y_true
+                )
             loss_ce.requires_grad = True
 
             loss = alpha*loss_mlm + (1-alpha)* loss_ce
@@ -109,11 +120,18 @@ def train(
                     torch.tensor([y_true]).to(device)
                 ])
             
-            f1 = multiclass_f1_score(
-                y_pred_val,
-                y_true_val,
-                num_classes= num_classes
-            )
+            if evaluation_fn == multiclass_f1_score:
+                f1 = multiclass_f1_score(
+                    y_pred_val,
+                    y_true_val,
+                    num_classes= num_classes
+                )
+
+            else:
+                f1 = evaluation_fn(
+                    y_pred_val,
+                    y_true_val,
+                )
 
 
             conf_matrix = multiclass_confusion_matrix(
@@ -121,10 +139,17 @@ def train(
                 y_true_val.to(torch.int64),
                 num_classes= num_classes
             )
+            
+            clear_output(True)
+            print(f'f1-score : {f1.item()}')
+            print(conf_matrix)
+            
+
 
             if f1 > best_f1:
                 best_f1 = f1
                 confusion_matrix = conf_matrix
+                best_model = deepcopy(model)
 
             history.append(f1.item())
 
@@ -132,4 +157,4 @@ def train(
             logging.info(f"End of epoch {epoch}: f1 = {f1.item()}")
             logging.info(conf_matrix)
     
-    return history, confusion_matrix
+    return history, confusion_matrix, best_model
