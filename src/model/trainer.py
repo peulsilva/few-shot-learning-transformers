@@ -108,9 +108,6 @@ class BaseTrainer(ABC):
                 labels = X["labels"]\
                     .to(device)\
                     .squeeze()
-                
-                if input_ids.shape[0] == 512:
-                    continue
 
                
                 outputs = self.forward(
@@ -120,10 +117,14 @@ class BaseTrainer(ABC):
                     attention_mask,
                     token_type_ids, 
                     labels,
+                    reshape=True
                 )
                 
                 loss = outputs.loss
-                predictions = outputs.logits.argmax(-1)
+                predictions = outputs\
+                    .logits\
+                    .argmax(-1)\
+                    .squeeze()
 
                 valid_outputs_mask = labels != -100
 

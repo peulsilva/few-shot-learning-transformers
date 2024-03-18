@@ -5,6 +5,7 @@ from datasets import Dataset
 from transformers import AutoModelForTokenClassification
 from copy import deepcopy
 from torcheval.metrics.functional import multiclass_f1_score, multiclass_confusion_matrix
+from IPython.display import clear_output
 
 class BioTrainer:
 
@@ -12,11 +13,13 @@ class BioTrainer:
         self,
         model : AutoModelForTokenClassification,
         optimizer : torch.optim,
-        device : str = "cuda"
+        n_classes : int ,
+        device : str = "cuda",
     ) -> None:
         self.model = model
         self.device = device
         self.optimizer = optimizer 
+        self.n_classes = n_classes
 
 
     def compile(
@@ -57,7 +60,7 @@ class BioTrainer:
 
                     if k == "bbox":
                         continue
-                    batch[k] = batch[k].reshape(4,512)
+                    batch[k] = batch[k].reshape(self.n_classes,512)
                 batch.pop('bbox')
 
                 y_true = batch['labels']
@@ -66,11 +69,11 @@ class BioTrainer:
                 with torch.no_grad():
                     y_pred = self.model(**batch).logits[:,:,1]
                 y_pred = y_pred[mask]\
-                    .reshape(4,-1)[:,1:]\
+                    .reshape(self.n_classes,-1)[:,1:]\
                     .argmax(dim = 0)
 
                 y_true = y_true[mask]\
-                    .reshape(4,-1)[:, 1:]\
+                    .reshape(self.n_classes,-1)[:, 1:]\
                     .argmax(dim = 0)
                 
                 y_pred_val = torch.cat([y_pred, y_pred_val])
@@ -79,7 +82,7 @@ class BioTrainer:
             f1 = multiclass_f1_score(
                 y_pred_val,
                 y_true_val,
-                num_classes=4
+                num_classes=self.n_classes
             )
 
             self.history.append(f1.item())
@@ -87,8 +90,13 @@ class BioTrainer:
             conf_matrix = multiclass_confusion_matrix(
                 y_true_val.to(torch.int64),
                 y_pred_val.to(torch.int64),
-                num_classes= 4
+                num_classes= self.n_classes
             )
+
+            clear_output(True)
+            print(f'f1-score : {f1.item()}')
+            print(conf_matrix)
+            
 
             if f1 > best_f1:
                 best_f1 = f1

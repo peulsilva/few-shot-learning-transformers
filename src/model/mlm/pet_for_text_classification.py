@@ -61,7 +61,12 @@ def train(
                 inverse_verbalizer
             )
 
-            mask_token_index = torch.where(input["input_ids"] == tokenizer.mask_token_id)[1]
+            try:
+                mask_token_index = torch.where(input["input_ids"] == tokenizer.mask_token_id)[1]
+
+            except:
+                mask_token_index = torch.where(input["input_ids"] == tokenizer.mask_token_id)[0]
+
             mask_token_logits = out.logits[0, mask_token_index, :]
             
             predictions = torch.Tensor(
@@ -101,7 +106,11 @@ def train(
                     inverse_verbalizer
                 )
 
-                mask_token_index = torch.where(input["input_ids"] == tokenizer.mask_token_id)[1]
+                try:
+                    mask_token_index = torch.where(input["input_ids"] == tokenizer.mask_token_id)[1]
+
+                except:
+                    mask_token_index = torch.where(input["input_ids"] == tokenizer.mask_token_id)[0]
                 mask_token_logits = out.logits[0, mask_token_index, :]
                 
                 predictions = torch.Tensor(
