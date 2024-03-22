@@ -3,12 +3,13 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 from typing import Dict, List
 from copy import deepcopy
+from tqdm import tqdm
 
 class PETDatasetForClassification(Dataset):
     def __init__(
         self, 
         processed_text : List[str], 
-        labels : List[int],
+        labels : List[str],
         tokenizer : AutoTokenizer,
         device : str = "cuda"
     ) -> None:
@@ -24,7 +25,7 @@ class PETDatasetForClassification(Dataset):
         
         self.encoded_labels[self.encoded_labels != tokenizer.mask_token_id] = -100
 
-        for idx, sentence in enumerate(self.encoded_labels):
+        for idx, sentence in tqdm(enumerate(self.encoded_labels)):
             sentence[sentence == tokenizer.mask_token_id] = tokenizer.vocab[labels[idx].lower()]
 
         self.inputs : Dict[str, torch.Tensor] = self.tokens

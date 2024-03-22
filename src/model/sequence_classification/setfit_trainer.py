@@ -30,6 +30,7 @@ class SetFitTrainer():
             val_dataloader : DataLoader,
             n_shots : int,
             n_epochs : int = 10,
+            save : bool = True,
             **kwargs
         ):
         loss_fn = losses.CosineSimilarityLoss(self.embedding_model)
@@ -83,10 +84,13 @@ class SetFitTrainer():
                 y_true_val.to(torch.int64),
                 num_classes=2
             )
+
+            clear_output()
             print(f'f1 score: {f1.item()}')
             print(conf_matrix)
 
-        self.embedding_model.save_to_hub(f"peulsilva/{self.model_name}-setfit-{n_shots}shots-{self.dataset_name}")
+        if save:
+            self.best_model.save_to_hub(f"peulsilva/{self.model_name}-setfit-{n_shots}shots-{self.dataset_name}")
 
     def train_classifier(
         self,
@@ -95,17 +99,24 @@ class SetFitTrainer():
         X_val : List[str],
         y_val : List[int],
         n_epochs : int =100,
-        embedding_model = None
+        loss_fn : torch.nn.Module = torch.nn.CrossEntropyLoss(),
+        embedding_model = None,
+        clf: torch.nn.Module = None,
+        lr : float = 1e-5
     ):
         if embedding_model is None:
             self.embedding_model = self.best_model\
                 .to(self.device)
+            
+        else:
+            self.embedding_model = embedding_model
 
-        loss_fn = torch.nn.CrossEntropyLoss()
+        if clf is not None:
+            self.clf = clf
 
         optimizer = torch.optim.Adam(
             self.classifier_model.parameters(),
-            lr = 1e-5
+            lr = lr
         )
 
         self.best_clf = None
@@ -158,12 +169,20 @@ class SetFitTrainer():
                         y_true_val, 
                         torch.tensor([y_val[i]]).to(self.device)
                     ])
+
+            if self.num_classes == 2:
+                f1 = binary_f1_score(
+                    y_pred_val,
+                    y_true_val
+                )
+
+            else:
                     
-            f1 = multiclass_f1_score(
-                y_pred_val,
-                y_true_val,
-                num_classes=self.num_classes
-            )
+                f1 = multiclass_f1_score(
+                    y_pred_val,
+                    y_true_val,
+                    num_classes=self.num_classes
+                )
             
             self.history.append(f1.item())
             if f1 > best_f1:
@@ -181,4 +200,4 @@ class SetFitTrainer():
             print(f'f1 score: {f1.item()}')
             print(conf_matrix)
 
-        return self.history
+        return self.history, self.embedding_model, self.best_clf

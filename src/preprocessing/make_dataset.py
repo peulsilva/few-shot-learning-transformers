@@ -218,7 +218,7 @@ class SplitWordsDataset(Dataset):
 
         self.pattern_fn = pattern_fn
 
-        self.label_names = data\
+        self.label_names : List[str] = data\
             .features['ner_tags']\
             .feature\
             .names
@@ -302,9 +302,10 @@ class SplitWordsDataset(Dataset):
                 real_name_label = self.label_keymap[label]
         
                 if real_name_label == "O":
-                    real_name_label= "NONE" 
+                    continue
+                    real_name_label= "none" 
                 else :
-                    real_name_label = real_name_label[2:]
+                    real_name_label = real_name_label[2:].lower()
 
                 pattern = self.pattern_fn(phrase, word, self.tokenizer)
                 pattern_list.append({"pattern": pattern,

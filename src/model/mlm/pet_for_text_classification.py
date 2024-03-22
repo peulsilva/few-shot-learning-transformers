@@ -150,6 +150,7 @@ def train(
             )
             
             clear_output(True)
+            print(f"Epoch {epoch}")
             print(f'f1-score : {f1.item()}')
             print(conf_matrix)
             
