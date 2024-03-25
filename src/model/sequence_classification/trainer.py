@@ -117,6 +117,7 @@ class SequenceClassificationTrainer:
 
 
             clear_output()
+            print(f'Epoch {epoch}')
             print(f"f1: {f1.item()}")
             print(conf_matrix)
 
