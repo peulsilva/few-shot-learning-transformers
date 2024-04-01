@@ -6,6 +6,7 @@ from torcheval.metrics.functional import binary_f1_score, multiclass_confusion_m
 from copy import deepcopy
 from typing import List
 from IPython.display import clear_output
+from scipy.stats import hmean
 
 class SetFitTrainer():
     def __init__(
@@ -70,23 +71,27 @@ class SetFitTrainer():
                         y_true_val, 
                         torch.tensor([y_true]).to(self.device)
                     ])
-                    
-            f1 = binary_f1_score(
-                y_pred_val,
-                y_true_val,
-            )
-            if f1 > best_f1:
-                best_f1 = f1
-                self.best_model = deepcopy(self.embedding_model)
-
+            
             conf_matrix= multiclass_confusion_matrix(
                 y_pred_val.to(torch.int64),
                 y_true_val.to(torch.int64),
                 num_classes=2
             )
+            metric = hmean(
+                [(conf_matrix[0,0]/(conf_matrix[0,0]+conf_matrix[0,1])).item(), (conf_matrix[1,1]/(conf_matrix[1,1] + conf_matrix[1,0])).item()]
+            )
+            f1 = binary_f1_score(
+                y_pred_val,
+                y_true_val,
+            )
+            if metric > best_f1:
+                best_f1 = metric
+                self.best_model = deepcopy(self.embedding_model)
+
 
             clear_output()
             print(f'f1 score: {f1.item()}')
+            print(f'metric: {metric}')
             print(conf_matrix)
 
         if save:
