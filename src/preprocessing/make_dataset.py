@@ -10,10 +10,14 @@ class ImageLayoutDataset(Dataset):
     def __init__(self, 
                  data,
                  tokenizer,
-                 encode : bool = True) -> None:
+                 device : str = 'cuda',
+                 encode : bool = True,
+                 valid_labels_keymap : Dict = None) -> None:
         super().__init__()
 
         self.tokenizer = tokenizer
+        self.device = device
+        self.valid_labels_keymap = valid_labels_keymap
 
         if encode:
             self.X = []
@@ -48,7 +52,10 @@ class ImageLayoutDataset(Dataset):
             if word_idx is None:
                 label_ids.append(-100)
             elif word_idx != previous_word_idx:  # Only label the first token of a given word.
-                label_ids.append(ner_tags[word_idx])
+                if self.valid_labels_keymap is not None:
+                    label_ids.append(self.valid_labels_keymap[ner_tags[word_idx]])
+                else:
+                    label_ids.append(ner_tags[word_idx])
             else:
                 label_ids.append(-100)
             previous_word_idx = word_idx
@@ -112,6 +119,9 @@ class ImageLayoutDataset(Dataset):
             "labels": labels,
             "bbox": bbox
         }
+
+        for (k,v ) in tokens.items():
+            tokens[k] = v.to(self.device)
     
         return tokens
 
