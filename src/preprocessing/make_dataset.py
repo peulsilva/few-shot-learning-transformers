@@ -12,12 +12,14 @@ class ImageLayoutDataset(Dataset):
                  tokenizer,
                  device : str = 'cuda',
                  encode : bool = True,
+                 tokenize_all_labels : bool = False,
                  valid_labels_keymap : Dict = None) -> None:
         super().__init__()
 
         self.tokenizer = tokenizer
         self.device = device
         self.valid_labels_keymap = valid_labels_keymap
+        self.tokenize_all_labels = tokenize_all_labels
 
         if encode:
             self.X = []
@@ -57,7 +59,13 @@ class ImageLayoutDataset(Dataset):
                 else:
                     label_ids.append(ner_tags[word_idx])
             else:
-                label_ids.append(-100)
+                if self.tokenize_all_labels:
+                    if self.valid_labels_keymap is not None:
+                        label_ids.append(self.valid_labels_keymap[ner_tags[word_idx]])
+                    else:
+                        label_ids.append(ner_tags[word_idx])
+                else: 
+                    label_ids.append(-100)
             previous_word_idx = word_idx
         labels.append(label_ids)
 
@@ -220,6 +228,7 @@ class SplitWordsDataset(Dataset):
         tokenizer,
         pattern_fn : callable,
         separators = [".", ":", "?"],
+        label_names = None
     ) -> None:
         super().__init__()
 
@@ -228,11 +237,14 @@ class SplitWordsDataset(Dataset):
 
         self.pattern_fn = pattern_fn
 
-        self.label_names : List[str] = data\
-            .features['ner_tags']\
-            .feature\
-            .names
+        if label_names == None:
+            self.label_names : List[str] = data\
+                .features['ner_tags']\
+                .feature\
+                .names
 
+        else:
+            self.label_names = label_names
         self.label_keymap = {k:v for k,v in enumerate(self.label_names)} 
 
         self.raw_data = data
@@ -312,7 +324,7 @@ class SplitWordsDataset(Dataset):
                 real_name_label = self.label_keymap[label]
         
                 if real_name_label == "O":
-                    continue
+                    # continue
                     real_name_label= "none" 
                 else :
                     real_name_label = real_name_label[2:].lower()

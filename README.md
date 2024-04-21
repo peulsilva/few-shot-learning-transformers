@@ -23,15 +23,17 @@ pip install -r requirements.txt
 
 ## Leaderboard
 
-| number of shots | Dataset | Technique | Performance (F1 Score) | 
-| - | - | - | - | 
-| 2 | FUNSD | BioTechnique | 0.53 |
-| 2 | FUNSD | PET (DistilBERT) | 0.43 |
-| 2 | FUNSD | Finetuning (LayoutLM) | 0.3 |
-| 5 | FUNSD | BioTechnique (BERT) | 0.53 |
-| 5 | FUNSD | PET (DistilBERT) | 0.48 |
-| 5 | FUNSD | Finetuning (LayoutLM) | 0.41 |
-| 10 | FUNSD | Finetuning (LayoutLM) | 0.69 |
-| 10 | FUNSD | BioTechnique (BERT) | 0.61 |
-| 10 | FUNSD | PET (DistilBERT) | 0.53 |
+| Exemples         | Approche    | FUNSD | SROIE | CORD |
+|------------------|-------------|-------|-------|------|
+|                  | Finetuning  | 0.33  | 0.93  | 0.45 |
+| $|\mathcal{T}| = 2$ | PET         | 0.43  | 0.85  | N.A. |
+|                  | Bio technique | 0.53  | 0.93  | N.A. |
+|------------------|-------------|-------|-------|------|
+|                  | Finetuning  | 0.41  | 0.94  | 0.56 |
+| $|\mathcal{T}| = 5$ | PET         | 0.48  | 0.92  | N.A. |
+|                  | Bio technique | 0.53  | 0.96  | N.A. |
+|------------------|-------------|-------|-------|------|
+|                  | Finetuning  | 0.69  | 0.94  | 0.71 |
+| $|\mathcal{T}| = 10$| PET         | 0.53  | 0.94  | N.A. |
+|                  | Bio technique | 0.61  | 0.97  | N.A. |
 

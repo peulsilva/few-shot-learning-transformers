@@ -4,9 +4,10 @@ from transformers import AdamW
 from tqdm import tqdm
 import logging
 import numpy as np
-from torcheval.metrics.functional import multiclass_f1_score
+from torcheval.metrics.functional import multiclass_f1_score, multiclass_confusion_matrix
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from IPython.display import clear_output
 from typing import Union, Dict
 
 class BaseTrainer(ABC):
@@ -109,7 +110,10 @@ class BaseTrainer(ABC):
                     .to(device)\
                     .squeeze()
 
-               
+                if (len(input_ids.shape) == 2):
+                    reshape = False
+                else: 
+                    reshape = True
                 outputs = self.forward(
                     self.model,
                     input_ids,
@@ -117,7 +121,7 @@ class BaseTrainer(ABC):
                     attention_mask,
                     token_type_ids, 
                     labels,
-                    reshape=True
+                    reshape=reshape
                 )
                 
                 loss = outputs.loss
@@ -204,6 +208,9 @@ class BaseTrainer(ABC):
                 num_classes=n_classes
             )
 
+            clear_output()
+            print(f"f1: {val_f1.item()}")
+
             self.save_best_model(
                 y_pred_val, 
                 y_true_val, 
@@ -249,7 +256,9 @@ class BaseTrainer(ABC):
 
     def evaluate(self,
                  data : Union[Dict, DataLoader],
-                 device : str = 'cuda'):
+                 n_classes,
+                 device : str = 'cuda',
+    ):
         if isinstance(data, DataLoader):
             with torch.no_grad():
 
@@ -287,7 +296,6 @@ class BaseTrainer(ABC):
                         reshape=True
                     )
 
-                    loss = outputs.loss
                     predictions = outputs\
                         .logits\
                         .argmax(-1)\
@@ -302,7 +310,7 @@ class BaseTrainer(ABC):
                     y_pred_val = torch.cat([y_pred, y_pred_val])
                     y_true_val = torch.cat([y_true, y_true_val])
 
-                return y_pred_val, y_true_val
+                return multiclass_f1_score(y_pred_val, y_true_val, num_classes=n_classes), multiclass_confusion_matrix(y_pred_val.to(torch.int64), y_true_val.to(torch.int64), num_classes=n_classes)
             
         elif isinstance(data, dict):
             with torch.no_grad():
