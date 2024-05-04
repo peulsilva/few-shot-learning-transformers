@@ -117,7 +117,7 @@ class SetFitTrainer():
             self.embedding_model = embedding_model
 
         if clf is not None:
-            self.clf = clf
+            self.classifier_model = clf
 
         optimizer = torch.optim.Adam(
             self.classifier_model.parameters(),
@@ -190,7 +190,7 @@ class SetFitTrainer():
                 )
             
             self.history.append(f1.item())
-            if f1 > best_f1:
+            if f1 >= best_f1:
                 best_f1 = f1
                 self.best_clf = deepcopy(self.classifier_model)
 
