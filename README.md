@@ -16,7 +16,9 @@ Transformers are well-suited for few-shot learning due to their attention mechan
 
 ### Named Entity Recognition for Image Documents
 - Pattern Exploiting Training ([PET](https://arxiv.org/abs/2001.07676))
-- [Bio Technique](https://arxiv.org/abs/2305.04928)
+- [CLASSBITE](https://arxiv.org/abs/2305.04928)
+- [ContaiNER](https://arxiv.org/abs/2109.07589)
+
 
 ### Classification Utils
 - [Focal Loss function for imbalanced datasets](https://arxiv.org/abs/1708.02002)
